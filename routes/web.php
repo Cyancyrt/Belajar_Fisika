@@ -8,4 +8,7 @@ Route::get('/', action: function () {
 Route::get('/jungkatjungkit', action: function () {
     return view('Dashboard.jungkat_jungkit');
 });
+Route::get('/create_friction', function(){
+    return view('Dashboard.module.friction.create_simulation');
+});
 

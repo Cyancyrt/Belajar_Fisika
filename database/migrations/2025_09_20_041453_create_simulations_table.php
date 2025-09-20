@@ -11,10 +11,13 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('module__learnings', function (Blueprint $table) {
+        Schema::create('simulations', function (Blueprint $table) {
             $table->id();
-            $table->string('title');
-            
+            $table->foreignId('learning_materials_id')->constrained()->onDelete('cascade');
+            $table->string('simulation_name');
+            $table->json('parameters');
+            $table->json('object');
+            $table->json('rules');
             $table->timestamps();
         });
     }
@@ -24,6 +27,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('module__learnings');
+        Schema::dropIfExists('simulations');
     }
 };
