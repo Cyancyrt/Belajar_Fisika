@@ -11,12 +11,14 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('learning_materials', function (Blueprint $table) {
+        Schema::create('user_achievements', function (Blueprint $table) {
             $table->id();
-            $table->string('title');
-            $table->enum('type', ['text', 'simulasi'])->default('text');
-            $table->text('content')->nullable();
+            $table->foreignId('user_id')->constrained()->onDelete('cascade');
+            $table->foreignId('achievement_id')->constrained()->onDelete('cascade');
+            $table->timestamp('earned_at');
             $table->timestamps();
+            
+            $table->unique(['user_id', 'achievement_id']);
         });
     }
 
@@ -25,6 +27,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('learning_materials');
+        Schema::dropIfExists('user_achievements');
     }
 };
