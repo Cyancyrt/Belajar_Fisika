@@ -11,14 +11,15 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('simulations', function (Blueprint $table) {
+        Schema::create('daily_challenges', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('learning_materials_id')->constrained()->onDelete('cascade');
-            $table->string('simulation_name');
-            $table->json('parameters');
-            $table->json('object');
-            $table->json('rules');
+            $table->date('challenge_date');
+            $table->foreignId('simulation_question_id')->constrained();
+            $table->integer('xp_multiplier')->default(2);
+            $table->boolean('is_active')->default(true);
             $table->timestamps();
+            
+            $table->unique('challenge_date');
         });
     }
 
@@ -27,6 +28,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('simulations');
+        Schema::dropIfExists('daily_challenges');
     }
 };
