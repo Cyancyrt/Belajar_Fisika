@@ -93,6 +93,12 @@
     <label>Friction</label>
     <input id="sFriction" type="number" step="0.05" value="0.8" />
   </div>
+  <div class="row" style="margin-top:6px">
+    <button id="spawnSlopeLicin" class="small">Slope Licin</button>
+    <button id="spawnSlopeDatar" class="small">Slope Datar</button>
+    <button id="spawnSlopeBergelombang" class="small">Slope Bergelombang</button>
+  </div>
+
   <div class="row">
     <button id="spawnSlopeCenter" class="small">Spawn Slope Tengah</button>
     <button id="spawnSlopeClick" class="small ghost">Spawn Slope Klik: OFF</button>
@@ -119,7 +125,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.20.0/matter.min.js"></script>
 <script>
 (function(){
-  const { Engine, Render, Runner, Bodies, Composite, Body, Events, Mouse, MouseConstraint, World, Query } = Matter;
+  const { Engine, Render, Runner, Bodies, Composite, Body, Events, Mouse, MouseConstraint, World, Query, Vertices } = Matter;
 
   // ---------- setup ----------
   const container = document.getElementById('container');
@@ -225,16 +231,24 @@
   }
 
   function createSlope(params){
-    // params: { x,y, width, height, angle, friction }
+    // params: { x, y, width, height, angle, friction, surfaceType }
     const body = Bodies.rectangle(params.x, params.y, params.width, params.height, {
       isStatic: true,
       friction: params.friction,
       render: { fillStyle:'#444' }
     });
+
     Body.rotate(body, params.angle);
+
     body.isSlope = true;
     body.isStatic = true;
-    body.slopeProps = { angle: params.angle, width: params.width, height: params.height };
+    body.slopeProps = { 
+      angle: params.angle, 
+      width: params.width, 
+      height: params.height, 
+      surfaceType: params.surfaceType || "datar"  // default datar
+    };
+
     return body;
   }
 
@@ -342,27 +356,158 @@
     }
   }
 
-  function spawnSlopeAt(x, y) {
-    const widthVal = parseFloat(sWidth.value) || 300;
-    const heightVal = parseFloat(sHeight.value) || 20;
-    const angle = parseFloat(sAngle.value) || 0;
-    const friction = parseFloat(sFriction.value) || 0.8;
+  // Fungsi helper untuk posisi random sepanjang slope (adaptasi dari contoh sebelumnya)
+  function getRandomPositionAlongSlope(slopeX, slopeY, widthVal, heightVal, angleRad) {
+    // Random offset sepanjang panjang slope (dari -width/2 ke +width/2)
+    const offsetX = (Math.random() - 0.5) * widthVal;
+    const offsetY = (Math.random() - 0.5) * heightVal * 0.3; // Variasi y kecil agar tetap di permukaan
 
-    const slope = Bodies.rectangle(x, y, widthVal, heightVal, {
-      friction,
-      angle,
-      isStatic: false, // awalnya bisa digerakkan
-      render: { fillStyle: '#607d8b' }
-    });
-    slope.isSlope = true;
-    slope.isUserObject = true; 
-    slope.slopeProps = { width: widthVal, height: heightVal, angle };
+    // Transformasi posisi relatif ke slope (miring, menggunakan rotasi)
+    const worldX = slopeX + offsetX * Math.cos(angleRad) - offsetY * Math.sin(angleRad);
+    const worldY = slopeY + offsetX * Math.sin(angleRad) + offsetY * Math.cos(angleRad);
 
-    Composite.add(world, slope);
-    slopeBodies.push(slope);
-
-    return slope;
+    return { x: worldX, y: worldY };
   }
+
+function createHalfCircle(x, y, radius, options = {}, protrusionFraction = 1.0) {
+  const segments = 30;
+  const vertices = [];
+
+  // Validasi fraction (0 < f <= 1)
+  protrusionFraction = Math.max(0.01, Math.min(1.0, protrusionFraction));
+
+  // Hitung kedalaman embed (bagian yang tertanam)
+  const fullHeight = radius; // Tinggi penuh setengah lingkaran
+  const embedDepth = fullHeight * (1 - protrusionFraction);
+
+  // Buat setengah lingkaran KE ATAS (angle 0 ke π untuk menonjol ke atas slope)
+  // Relatif ke (0,0) dulu
+  for (let i = 0; i <= segments; i++) {
+    const angle = (Math.PI * i / segments); // Dari 0 ke π (setengah atas)
+    const vx = radius * Math.cos(angle);    // x dari r ke -r
+    const vy = -radius * Math.sin(angle);   // y dari 0 ke -r ke 0 (atas, negatif untuk menonjol ke atas)
+    vertices.push({ x: vx, y: vy });
+  }
+
+  // Tutup bagian bawah dengan garis flat (dari -r ke r di y=0 relatif)
+  vertices.push({ x: -radius, y: 0 });
+  vertices.push({ x: radius, y: 0 });
+
+  // Geser seluruh vertices ke bawah sebesar embedDepth (tanam bagian bawah)
+  // Ini membuat hanya protrusionFraction yang menonjol dari y=0
+  for (let i = 0; i < vertices.length; i++) {
+    vertices[i].y += embedDepth; // Geser ke bawah (y positif)
+  }
+
+  // Translate ke posisi global (x, y)
+  // y adalah posisi dasar (permukaan slope), jadi translate agar bagian bawah di y
+  for (let i = 0; i < vertices.length; i++) {
+    vertices[i].x += x;
+    vertices[i].y += y; // y sekarang adalah baseline permukaan slope
+  }
+
+  // Adjust centerY untuk Bodies.fromVertices: Geser ke bawah sedikit agar center di tengah menonjol
+  const adjustedCenterY = y + (embedDepth / 2); // Center di tengah embed + protrusion
+
+  return Bodies.fromVertices(x, adjustedCenterY, [vertices], {
+    isStatic: false,
+    // Default options untuk konsistensi dengan slope bergelombang
+    friction: 0.6,
+    restitution: 0.1,
+    ...options // Override jika ada
+  }, true); // Flag true untuk auto-convex hull (Matter.js otomatis simplify polygon)
+}
+
+function spawnSlopeAt(x, y, surfaceType = 'datar') { 
+  const widthVal = parseFloat(sWidth.value) || 300;
+  const heightVal = parseFloat(sHeight.value) || 20;
+  const angleDeg = parseFloat(sAngle.value) || 0;
+  const angleRad = angleDeg * Math.PI / 180;
+
+  let friction = 0.8;
+  let restitution = 0;
+
+  if (surfaceType === 'licin') {
+    friction = 0.05;
+    restitution = 0.2;
+  } else if (surfaceType === 'datar') {
+    friction = 0.8;
+    restitution = 0;
+  } else if (surfaceType === 'bergelombang') {
+    friction = 0.6;
+    restitution = 0.1;
+  }
+
+  // Bentuk slope utama
+  const slopeMain = Bodies.rectangle(0, 0, widthVal, heightVal, {
+    friction,
+    restitution,
+    render: { 
+      fillStyle: surfaceType === 'licin' ? '#03a9f4' : 
+                 surfaceType === 'bergelombang' ? '#8B4513' : '#607d8b'
+    }
+  });
+
+  let parts = [slopeMain];
+
+  // Tambah "polisi tidur" bila perlu
+  if (surfaceType === 'bergelombang') {
+    const numBumps = 10;
+    const bumpRadius = 17;
+
+    for (let i = 0; i < numBumps; i++) {
+      const offsetX = (i - (numBumps-1)/2) * (widthVal/numBumps);
+      const offsetY = -heightVal/2 - bumpRadius/2;
+      const protrusionFraction = 0.165;
+      const bump = createHalfCircle(offsetX, offsetY, bumpRadius, {
+        friction,
+        restitution,
+        render: { fillStyle: '#FFD700' }
+      },protrusionFraction);
+
+      parts.push(bump);
+    }
+  }
+
+  // Gabung jadi compound body
+  const compoundSlope = Body.create({
+    parts,
+    isStatic: false,
+    friction,
+    restitution
+  });
+
+  Body.setPosition(compoundSlope, { x, y });
+  Body.setAngle(compoundSlope, angleRad);
+
+  compoundSlope.isSlope = true;
+  compoundSlope.isUserObject = true;
+  compoundSlope.slopeProps = { width: widthVal, height: heightVal, angle: angleDeg, surfaceType };
+
+  Composite.add(world, compoundSlope);
+  slopeBodies.push(compoundSlope);
+
+  return compoundSlope;
+}
+
+  // Event listener tetap sama
+  spawnSlopeBergelombang.addEventListener('click', () => {
+    spawnSlopeAt(w()/2 - 200, h()/2 + 150, "bergelombang");
+  });
+
+
+  spawnSlopeLicin.addEventListener('click', () => {
+    spawnSlopeAt(w()/2, h()/2 + 150, "licin");
+  });
+
+  spawnSlopeDatar.addEventListener('click', () => {
+    spawnSlopeAt(w()/2 + 200, h()/2 + 150, "datar");
+  });
+
+  // spawnSlopeBergelombang.addEventListener('click', () => {
+  //   spawnSlopeAt(w()/2 - 200, h()/2 + 150, "bergelombang");
+  // });
+
 
   spawnCenterBtn.addEventListener('click', () => spawnObjectAt(w()/2, h()/2 - 120));
   spawnSlopeCenter.addEventListener('click', () => spawnSlopeAt(w()/2 + 200, h()/2 + 100));
@@ -443,19 +588,34 @@
   // ---------- rotate slope ----------
   Events.on(mouseConstraint, 'mousedown', (event) => {
     const mouse = event.mouse;
-    const clickedBodies = Matter.Query.point(slopeBodies, mouse.position);
-    if (clickedBodies.length > 0) {
-      const slope = clickedBodies[0];
-      if (slope.isSlope) {
-        // rotasi 5° ke kiri
-        const newAngle = slope.angle - (Math.PI / 36); // 5 derajat
-        Body.setAngle(slope, newAngle);
 
-        // simpan ke properti slope agar saat export JSON ikut update
-        slope.slopeProps.angle = newAngle;
+    // cek klik pada slope dulu
+    let clickedBodies = Matter.Query.point(slopeBodies, mouse.position);
+
+    if (clickedBodies.length === 0) {
+      // kalau tidak kena slope, coba cek objek user
+      clickedBodies = Matter.Query.point(userBodies, mouse.position);
+    }
+
+    if (clickedBodies.length > 0) {
+      const body = clickedBodies[0];
+
+      // rotasi 5° ke kiri
+      const newAngle = body.angle - (Math.PI / 36);
+      Body.setAngle(body, newAngle);
+
+      // kalau slope, simpan ke slopeProps supaya ikut export
+      if (body.isSlope) {
+        body.slopeProps.angle = newAngle;
+      }
+      // kalau objek biasa, nggak ada slopeProps, tapi kita bisa bikin catatan custom
+      else if (body.isUserObject) {
+        body.userProps = body.userProps || {};
+        body.userProps.angle = newAngle; // supaya bisa ikut diexport
       }
     }
   });
+
 
   // ---------- export ----------
   exportBtn.addEventListener('click', () => {
