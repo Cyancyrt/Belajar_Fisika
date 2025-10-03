@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Simulation;
+use App\Models\SimulationQuestion;
 use Illuminate\Http\Request;
 
 class SimulationController extends Controller
@@ -10,17 +11,22 @@ class SimulationController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index($questionId)
     {
-        //
+        $question = SimulationQuestion::findOrFail($questionId);
+        return view('Dashboard.module.friction.friction_soal2', compact('question'));
     }
 
     /**
      * Show the form for creating a new resource.
      */
-    public function create()
+    public function submitAnswer($userAnswer, $criteria)
     {
-        //
+        $targetValue = $criteria['target_value'];
+        $tolerance = $criteria['tolerance'];
+        $userValue = $userAnswer['calculated_value'] ?? 0;
+
+        return abs($userValue - $targetValue) <= $tolerance;
     }
 
     /**

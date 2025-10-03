@@ -50,7 +50,7 @@ class PhysicsTopicSeeder extends Seeder
         ];
 
         foreach ($topics as $topic) {
-            PhysicsTopic::create($topic);
+            PhysicsTopic::updateOrCreate($topic);
         }
 
         $this->command->info('✅ Created 3 physics topics successfully!');

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Module_Learning;
+use App\Models\SimulationQuestion;
 use Illuminate\Http\Request;
 
 class ModuleController extends Controller
@@ -12,13 +13,14 @@ class ModuleController extends Controller
      */
     public function index()
     {
-        //
+        $courses = SimulationQuestion::all();
+        return view ('Dashboard.module.list_course', compact('courses'));
     }
 
     /**
      * Show the form for creating a new resource.
      */
-    public function create()
+    public function evaluate()
     {
         //
     }

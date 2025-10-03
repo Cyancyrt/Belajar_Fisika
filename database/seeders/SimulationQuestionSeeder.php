@@ -51,6 +51,36 @@ class SimulationQuestionSeeder extends Seeder
             ],
             [
                 'physics_topic_id' => $newton->id,
+                'question_text' => 'Sebuah balok bermassa 5 kg berada di atas lantai datar dengan koefisien gesek statis μs = 0.6 dan gesek kinetis μk = 0.4. Jika balok didorong dengan gaya 20 N, tentukan gaya gesek f yang bekerja pada balok!',
+                'simulation_type' => 'friction_flat',
+                'parameters' => [
+                    'mass' => 5,
+                    'mu_s' => 0.6,
+                    'mu_k' => 0.4,
+                    'appliedF' => 20,
+                    'slopeDeg' => 0
+                ],
+                'evaluation_criteria' => [
+                    'target_variable' => 'friction',
+                    // hitung manual:
+                    // N = m*g = 5*9.8 = 49 N
+                    // fs_max = μs*N = 0.6*49 = 29.4 N
+                    // F = 20 N < fs_max → balok tidak bergerak
+                    // f = 20 N
+                    'target_value' => 20,
+                    'tolerance' => 1
+                ],
+                'hints' => [
+                    'Hitung gaya normal: N = m × g',
+                    'Hitung gaya gesek maksimum: fs_max = μs × N',
+                    'Bandingkan gaya dorong dengan fs_max',
+                    'Jika F < fs_max maka f = F, jika F > fs_max maka f = fk'
+                ],
+                'max_score' => 100,
+                'difficulty' => 'Sedang'
+            ],
+            [
+                'physics_topic_id' => $newton->id,
                 'question_text' => 'Sebuah mobil bermassa 1200 kg bergerak dari keadaan diam. Jika gaya dorong mesin adalah 3000 N dan gaya gesek 500 N, berapakah percepatan mobil?',
                 'simulation_type' => 'newton_second_law',
                 'parameters' => [
@@ -74,7 +104,7 @@ class SimulationQuestionSeeder extends Seeder
         ];
 
         foreach ($questions as $question) {
-            SimulationQuestion::create($question);
+            SimulationQuestion::updateOrCreate($question);
         }
     }
 
@@ -132,7 +162,7 @@ class SimulationQuestionSeeder extends Seeder
         ];
 
         foreach ($questions as $question) {
-            SimulationQuestion::create($question);
+            SimulationQuestion::updateOrCreate($question);
         }
     }
 
@@ -192,7 +222,7 @@ class SimulationQuestionSeeder extends Seeder
         ];
 
         foreach ($questions as $question) {
-            SimulationQuestion::create($question);
+            SimulationQuestion::updateOrCreate($question);
         }
     }
 }
