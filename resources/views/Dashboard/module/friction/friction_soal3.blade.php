@@ -151,340 +151,320 @@
 <script>
 const { Engine, Render, Runner, Bodies, Body, Composite, Events } = Matter;
 
-// Engine & World
+// === SETUP DASAR ===
 const engine = Engine.create();
 const world = engine.world;
 world.gravity.y = 1;
 
-// Canvas size
 let W = window.innerWidth, H = window.innerHeight;
 
 // Renderer
 const render = Render.create({
-    element: document.body,
-    engine: engine,
-    options: {
-        width: W,
-        height: H,
-        wireframes: false,
-        background: 'transparent' // langit biru muda
-    }
+  element: document.body,
+  engine: engine,
+  options: {
+    width: W,
+    height: H,
+    wireframes: false,
+    background: 'transparent'
+  }
 });
 Render.run(render);
 Runner.run(Runner.create(), engine);
+
 render.canvas.style.position = 'absolute';
 render.canvas.style.zIndex = '10';
 
-// Ground
+// === GROUND TAK TERBATAS ===
 const groundHeight = 150;
-const groundY = H - groundHeight/2;
-const ground = Bodies.rectangle(W/2, groundY, W * 10, groundHeight, {
-    isStatic: true,
-    render: { fillStyle: '#7c5e10' },
-    friction: 0
-});
-Composite.add(world, ground);
+const groundY = H - groundHeight / 2;
+const segmentWidth = W;
+const groundSegments = [];
 
-// 🎨 Tambahkan latar belakang statis (gunung dan pohon)
+for (let i = 0; i < 3; i++) {
+  const seg = Bodies.rectangle(
+    i * segmentWidth + segmentWidth / 2,
+    groundY,
+    segmentWidth,
+    groundHeight,
+    {
+      isStatic: true,
+      render: { fillStyle: '#7c5e10' },
+      friction: 0
+    }
+  );
+  Composite.add(world, seg);
+  groundSegments.push(seg);
+}
+
+// updateGround: pindahkan segmen paling kiri ke depan
+function updateGround(cameraX) {
+  const threshold = segmentWidth / 2;
+  groundSegments.forEach(seg => {
+    if (cameraX - seg.position.x > threshold * 2) {
+      Body.setPosition(seg, {
+        x: seg.position.x + segmentWidth * groundSegments.length,
+        y: groundY
+      });
+    }
+  });
+}
+
+// === LATAR BELAKANG (PARALLAX) ===
 const bgCanvas = document.createElement('canvas');
 bgCanvas.width = W;
 bgCanvas.height = H;
 bgCanvas.style.position = 'absolute';
 bgCanvas.style.top = '0';
 bgCanvas.style.left = '0';
-bgCanvas.style.zIndex = '5'; // di belakang canvas utama
+bgCanvas.style.zIndex = '5';
 document.body.appendChild(bgCanvas);
 
 const bgCtx = bgCanvas.getContext('2d');
 
 function drawBackground(cameraX = 0) {
-    // Opsional: Uncomment untuk debug (tapi jangan biarkan aktif, karena akan spam console)
-    // console.log('drawBackground dipanggil dengan cameraX:', cameraX);
+  bgCtx.clearRect(0, 0, W, H);
 
-    bgCtx.clearRect(0, 0, W, H);
+  // Langit
+  const gradient = bgCtx.createLinearGradient(0, 0, 0, H);
+  gradient.addColorStop(0, "#b3e5fc");
+  gradient.addColorStop(1, "#e1f5fe");
+  bgCtx.fillStyle = gradient;
+  bgCtx.fillRect(0, 0, W, H);
 
-    // 🌤 Langit (gradient biru muda) - Ini statis, tidak perlu conditional
-    const gradient = bgCtx.createLinearGradient(0, 0, 0, H);
-    gradient.addColorStop(0, "#b3e5fc");  // Atas: biru terang
-    gradient.addColorStop(1, "#e1f5fe"); // Bawah: biru muda
-    bgCtx.fillStyle = gradient;
-    bgCtx.fillRect(0, 0, W, H);
+  // Gunung
+  bgCtx.fillStyle = "#7ba176";
+  const mountainSpacing = 400;
+  const mountainOffset = (cameraX * 0.3) % mountainSpacing;
+  for (let i = -1; i < (W / mountainSpacing) + 2; i++) {
+    const baseX = (i * mountainSpacing) - mountainOffset;
+    bgCtx.beginPath();
+    bgCtx.moveTo(baseX, H - 100);
+    bgCtx.lineTo(baseX + 200, H - 350);
+    bgCtx.lineTo(baseX + 400, H - 100);
+    bgCtx.closePath();
+    bgCtx.fill();
+  }
 
-    // 🏔 Gunung (parallax lambat, hijau) - Tanpa outline debug
-    bgCtx.fillStyle = "#7ba176";
-    const mountainSpacing = 400;
-    const mountainOffset = (cameraX * 0.3) % mountainSpacing;  // Parallax: gerak lambat
+  // Pohon
+  const treeSpacing = 180;
+  const treeOffset = (cameraX * 0.6) % treeSpacing;
+  for (let i = -1; i < (W / treeSpacing) + 3; i++) {
+    const x = (i * treeSpacing) - treeOffset;
+    const y = H - 120;
 
-    for (let i = -1; i < (W / mountainSpacing) + 2; i++) {
-        const baseX = (i * mountainSpacing) - mountainOffset;
-        
-        // Pastikan gunung terlihat di layar (clip jika perlu)
-        if (baseX > -400 && baseX < W + 400) {  // Hanya gambar yang dekat layar
-            bgCtx.beginPath();
-            bgCtx.moveTo(baseX, H - 100);      // Base lebih tinggi agar terlihat di atas ground
-            bgCtx.lineTo(baseX + 200, H - 350); // Puncak
-            bgCtx.lineTo(baseX + 400, H - 100); // Base kanan
-            bgCtx.closePath();
-            bgCtx.fill();
-            // HAPUS: Outline merah debug (sudah tidak ada di sini)
-        }
-    }
+    bgCtx.fillStyle = "#5b3714";
+    bgCtx.fillRect(x + 10, y - 50, 12, 50);
 
-    // 🌲 Pohon (parallax lebih cepat, hijau tua) - Tanpa outline debug
-    const treeSpacing = 180;
-    const treeOffset = (cameraX * 0.6) % treeSpacing;  // Parallax: gerak lebih cepat
+    bgCtx.beginPath();
+    bgCtx.fillStyle = "#2e7d32";
+    bgCtx.arc(x + 16, y - 60, 25, 0, Math.PI * 2);
+    bgCtx.fill();
 
-    for (let i = -1; i < (W / treeSpacing) + 3; i++) {
-        const x = (i * treeSpacing) - treeOffset;
-        const y = H - 120;  // Sedikit lebih tinggi agar tidak overlap ground
-
-        if (x > -200 && x < W + 200) {  // Hanya gambar pohon dekat layar
-            // Batang (coklat)
-            bgCtx.fillStyle = "#5b3714";
-            bgCtx.fillRect(x + 10, y - 50, 12, 50);
-
-            // Daun utama (hijau)
-            bgCtx.beginPath();
-            bgCtx.fillStyle = "#2e7d32";
-            bgCtx.arc(x + 16, y - 60, 25, 0, Math.PI * 2);
-            bgCtx.fill();
-
-            // Lapisan daun tambahan (lebih besar untuk efek 3D)
-            bgCtx.beginPath();
-            bgCtx.arc(x + 5, y - 65, 20, 0, Math.PI * 2);
-            bgCtx.fill();
-
-            // HAPUS: Outline biru debug (sudah tidak ada di sini)
-        }
-    }
-
-    // HAPUS: Semua debug rect merah dan teks (sudah tidak ada di sini)
+    bgCtx.beginPath();
+    bgCtx.arc(x + 5, y - 65, 20, 0, Math.PI * 2);
+    bgCtx.fill();
+  }
 }
 
-// Panggil awal untuk render statis (hanya sekali)
-drawBackground(0);
+// === MOBIL ===
+const MASS = 1200;
+const APPLIED_F = 30000;
+const friction_force = 6000;
+const expectedAcceleration = (APPLIED_F - friction_force) / MASS;
 
-// Kamera mengikuti mobil (event listener tetap sama, tidak berubah)
+let car = null;
+let engineStarted = false;
+let isAnswerCorrect = false;
+let brokenParts = [];
+
+function createCar() {
+  const groundTop = groundY - groundHeight / 2;
+  const wheelR = 12;
+  const bodyY = groundTop - wheelR - 15;
+  const wheelY = bodyY + 15 + wheelR;
+
+  const body = Bodies.rectangle(W / 2, bodyY, 80, 30, { render: { fillStyle: 'blue' } });
+  const w1 = Bodies.circle(W / 2 - 25, wheelY, wheelR, { render: { fillStyle: '#333' } });
+  const w2 = Bodies.circle(W / 2 + 25, wheelY, wheelR, { render: { fillStyle: '#333' } });
+
+  car = Body.create({ parts: [body, w1, w2] });
+  Body.setMass(car, MASS);
+  car.isBroken = false;
+  car.isMoving = false;
+
+  Composite.add(world, car);
+}
+
+function breakCar() {
+  if (!car) return;
+  const pos = car.position;
+  Composite.remove(world, car);
+
+  const brokenBody = Bodies.rectangle(pos.x, pos.y - 20, 80, 30, { render: { fillStyle: 'red' } });
+  const w1 = Bodies.circle(pos.x - 35, pos.y + 10, 12, { render: { fillStyle: '#555' } });
+  const w2 = Bodies.circle(pos.x + 27, pos.y + 10, 12, { render: { fillStyle: '#555' } });
+
+  brokenParts = [brokenBody, w1, w2];
+  Composite.add(world, brokenParts);
+}
+
+// === CAMERA FOLLOW + GROUND UPDATE ===
 let lastCameraX = 0;
-const UPDATE_THRESHOLD = 5;  // Hanya update jika cameraX berubah > 5px (sesuaikan jika perlu)
+const UPDATE_THRESHOLD = 5;
 
 Events.on(render, 'afterRender', function() {
-    if (!car) {
-        // Jika car belum ada, render statis (tidak perlu update terus)
-        if (Math.abs(0 - lastCameraX) > UPDATE_THRESHOLD) {
-            drawBackground(0);
-            lastCameraX = 0;
-        }
-        return;
-    }
-    
-    const cameraX = car.position.x - W / 2;
-    
-    // Batasan: Hanya update jika cameraX berubah signifikan (untuk optimasi parallax)
-    if (Math.abs(cameraX - lastCameraX) > UPDATE_THRESHOLD) {
-        drawBackground(cameraX);
-        lastCameraX = cameraX;
-        
-        // Opsional: Log hanya saat update (tidak spam)
-        // console.log('Background updated! Camera X:', cameraX);
-    }
-    
-    // Pindahkan viewport kamera mengikuti posisi mobil (ini tetap setiap frame, karena Matter.js butuh)
-    Render.lookAt(render, {
-        min: { x: cameraX, y: 0 },
-        max: { x: cameraX + W, y: H }
-    });
+  if (!car) return;
+  const cameraX = car.position.x - W / 2;
+
+  if (Math.abs(cameraX - lastCameraX) > UPDATE_THRESHOLD) {
+    drawBackground(cameraX);
+    updateGround(cameraX);
+    lastCameraX = cameraX;
+  }
+
+  Render.lookAt(render, {
+    min: { x: cameraX, y: 0 },
+    max: { x: cameraX + W, y: H }
+  });
 });
 
+// === INTERAKSI ===
+let accelerationForce = 0;
+let applyingForce = false;
+let userAcceleration = 0;
 
-// Physics parameters (sesuai parameter)
-const MASS = 1200;        // kg
-const APPLIED_F = 30000;   // N
-const friction_force = 6000; // N
-
-const expectedAcceleration = (APPLIED_F - friction_force) / MASS; // m/s²
-
-// Car
-let car =null, engineStarted = false, isAnswerCorrect = false;
-
-function createCar(){
-    const groundTop = groundY - groundHeight/2;
-    const carBodyHeight = 30;
-    const wheelRadius = 12;
-
-    const bodyY = groundTop - wheelRadius - carBodyHeight/2;
-    const wheelY = bodyY + carBodyHeight/2 + wheelRadius;
-
-    const body = Bodies.rectangle(W/2, bodyY, 80, carBodyHeight, { render:{fillStyle:'blue'}, density:0.001 });
-    const wheel1 = Bodies.circle(W/2-25, wheelY, wheelRadius, { render:{fillStyle:'#333'} });
-    const wheel2 = Bodies.circle(W/2+25, wheelY, wheelRadius, { render:{fillStyle:'#333'} });
-
-    car = Body.create({ parts:[body, wheel1, wheel2] });
-    Body.setMass(car, MASS);
-    car.isBroken = false;
-    car.isMoving = false;
-    Composite.add(world, car);
-}
-let brokenParts = [];
-function breakCar(){
-    if (!car) return;
-
-    // Posisi terakhir sebelum dibongkar
-    const pos = car.position;
-
-    // Hapus mobil gabungan
-    Composite.remove(world, car);
-
-    // Bikin ulang parts sebagai body terpisah di posisi yang sama
-    const brokenBody = Bodies.rectangle(pos.x, pos.y-20, 80, 30, { render:{fillStyle:'red'}, density:0.001 });
-    const brokenWheel1 = Bodies.circle(pos.x-35, pos.y+10, 12, { render:{fillStyle:'#555'} });
-    const brokenWheel2 = Bodies.circle(pos.x+27, pos.y+10, 12, { render:{fillStyle:'#555'} });
-    car.isBroken = true; // 🚩 tandai sudah pecah
-    brokenParts = [brokenBody, brokenWheel1, brokenWheel2];
-    
-    Composite.add(world, brokenParts);
-}
-
-createCar();
-
-// Feedback
 function showFeedback(msg, success) {
   const fb = document.getElementById('feedback');
   const fbMsg = document.getElementById('feedbackMsg');
   fbMsg.textContent = msg;
-  fb.className = '';            // reset class
-  fb.style.display = 'block';   // tampilkan
+  fb.className = '';
+  fb.style.display = 'block';
   fb.style.opacity = '1';
   fb.classList.add(success ? 'ok' : 'bad');
 
-  // hilang otomatis
   setTimeout(() => {
     fb.style.opacity = '0';
     setTimeout(() => fb.style.display = 'none', 400);
   }, success ? 3000 : 5000);
 }
 
-// tombol close
 document.getElementById('closeFeedback').addEventListener('click', () => {
   const fb = document.getElementById('feedback');
   fb.style.opacity = '0';
   setTimeout(() => fb.style.display = 'none', 400);
 });
 
-// Check Answer
-    document.getElementById('checkAnswerBtn').addEventListener('click', () => {
-        if (!engineStarted){
-            showFeedback('Harus start engine dulu sebelum submit jawaban!', false);
-            return;
-        }
-
-        const input = parseFloat(document.getElementById('answerInput').value);
-        if (isNaN(input)){
-            showFeedback('Masukkan angka yang valid!', false);
-            return;
-        }
-
-        const expected = expectedAcceleration.toFixed(2);
-        if (Math.abs(input - expectedAcceleration) < 0.01) {
-            // Jawaban benar
-            showFeedback(`Benar! Percepatan = ${expected} m/s². Mobil berjalan normal.`, true);
-            isAnswerCorrect = true;
-            car.isBroken = false;
-            car.render.fillStyle = 'blue';
-        } else {
-            // Jawaban salah → mobil rusak
-            showFeedback(`Salah! Jawaban benar = ${expected} m/s². Mobil rusak.`, false);
-            isAnswerCorrect = false;
-            car.isBroken = true;
-            car.isMoving = false;
-            applyingForce = false;
-
-            // stop mobil
-            Body.setVelocity(car, { x: 0, y: 0 });
-            breakCar();
-        }
-        updateReadouts();
-    });
-
-let accelerationForce = 0; // besar gaya per frame dari input
-let applyingForce = false; // state apakah force sedang diterapkan
-let userAcceleration = 0;
-
-// Start Engine
 document.getElementById('startEngineBtn').addEventListener('click', () => {
   const input = parseFloat(document.getElementById('answerInput').value);
-  if (isNaN(input)) {
-    showFeedback('Masukkan angka dulu sebelum start engine!', false);
-    return;
-  }
+  if (isNaN(input)) return showFeedback('Masukkan angka dulu sebelum start engine!', false);
 
   engineStarted = true;
   car.isMoving = true;
-  userAcceleration=input;
-  // Hitung force konstan berdasarkan input percepatan
-  // semakin besar input, semakin besar dorongan tiap frame
-  accelerationForce = input * 0.0005;  
-  applyingForce = true; // aktifkan gaya
+  userAcceleration = input;
+  accelerationForce = input * 0.0005;
+  applyingForce = true;
 
-  // Atur gesekan rendah biar efeknya kelihatan
   car.friction = 0;
   car.frictionAir = 0.01;
 
-  // Aktifkan tombol cek jawaban
   document.getElementById('checkAnswerBtn').disabled = false;
-
   showFeedback(`Mesin dinyalakan, mobil dipercepat ${input} m/s²!`, true);
 });
 
-// Reset
+document.getElementById('checkAnswerBtn').addEventListener('click', () => {
+  if (!engineStarted) return showFeedback('Harus start engine dulu sebelum submit jawaban!', false);
+  const input = parseFloat(document.getElementById('answerInput').value);
+  if (isNaN(input)) return showFeedback('Masukkan angka yang valid!', false);
+
+  const expected = expectedAcceleration.toFixed(2);
+  if (Math.abs(input - expectedAcceleration) < 0.01) {
+    showFeedback(`Benar! Percepatan = ${expected} m/s². Mobil berjalan normal.`, true);
+    isAnswerCorrect = true;
+    car.render.fillStyle = 'blue';
+  } else {
+    showFeedback(`Salah! Jawaban benar = ${expected} m/s². Mobil rusak.`, false);
+    isAnswerCorrect = false;
+    car.isMoving = false;
+    applyingForce = false;
+    Body.setVelocity(car, { x: 0, y: 0 });
+    breakCar();
+  }
+  updateReadouts();
+});
+Events.on(engine, 'afterUpdate', function once() {
+  Body.applyForce(car, car.position, { x: 0.05, y: 0 });
+  Events.off(engine, 'afterUpdate', once); // hanya sekali
+});
 document.getElementById('resetBtn').addEventListener('click', () => {
-  Composite.remove(world, car);
+  // Hapus semua objek
+  Composite.clear(world, false);
+  brokenParts = [];
+  
+  // Buat ulang ground
+  groundSegments.length = 0;
+  for (let i = 0; i < 3; i++) {
+    const seg = Bodies.rectangle(
+      i * segmentWidth + segmentWidth / 2,
+      groundY,
+      segmentWidth,
+      groundHeight,
+      {
+        isStatic: true,
+        render: { fillStyle: '#7c5e10' },
+        friction: 0
+      }
+    );
+    Composite.add(world, seg);
+    groundSegments.push(seg);
+  }
+
+  // Reset status mobil
   isAnswerCorrect = false;
-  car.isBroken = false;
-  car.isMoving = false;
   engineStarted = false;
   applyingForce = false;
   accelerationForce = 0;
-
   document.getElementById('answerInput').value = '';
-    if (brokenParts.length > 0) {
-        brokenParts.forEach(part => Composite.remove(world, part));
-        brokenParts = [];
-    }
 
-    // Hapus mobil utuh kalau masih ada
-    if (car) {
-        Composite.remove(world, car);
-        car = null;
-    }
   createCar();
+  drawBackground(0);
+  updateGround(0);
   updateReadouts();
+
   showFeedback('Reset dilakukan. Mulai lagi dari awal.', true);
 });
 
-// Update readouts
-function updateReadouts(){
-    const vel = car.speed;
-    document.getElementById('roAcceleration').textContent = 
-        (engineStarted ? userAcceleration : 0).toFixed(2);
-    document.getElementById('roFriction').textContent = friction_force.toFixed(2);
-    document.getElementById('roVel').textContent = vel.toFixed(2);
+
+function updateReadouts() {
+  const vel = car ? car.speed : 0;
+  document.getElementById('roAcceleration').textContent = (engineStarted ? userAcceleration : 0).toFixed(2);
+  document.getElementById('roFriction').textContent = friction_force.toFixed(2);
+  document.getElementById('roVel').textContent = vel.toFixed(2);
 }
 
-// Loop force
 Events.on(engine, 'beforeUpdate', () => {
-  if (applyingForce && car.isMoving) {
+  if (applyingForce && car && car.isMoving) {
     Body.applyForce(car, car.position, { x: accelerationForce, y: 0 });
   }
-    updateReadouts();
+  updateReadouts();
 });
 
+// Modal controls
+document.getElementById('questionBtn').addEventListener('click', () => {
+  document.getElementById('questionModal').style.display = 'flex';
+});
+['closeQuestion', 'closeQuestion2'].forEach(id => {
+  document.getElementById(id).addEventListener('click', () => {
+    document.getElementById('questionModal').style.display = 'none';
+  });
+});
 
-// Modal controls (opsional)
-document.getElementById('questionBtn').addEventListener('click',()=>document.getElementById('questionModal').style.display='flex');
-document.getElementById('closeQuestion').addEventListener('click',()=>document.getElementById('questionModal').style.display='none');
-document.getElementById('closeQuestion2').addEventListener('click',()=>document.getElementById('questionModal').style.display='none');
+// INIT
+createCar();
+drawBackground(0);
+updateGround(0);
 </script>
+
 {{-- SUBMIT ANSWER --}}
 <script>
 // ambil CSRF token dulu
