@@ -184,7 +184,7 @@
 
   /* Zona drop tetap di tengah */
   #dropZoneFloating {
-    bottom: 160px; /* dinaikkan biar tidak tabrakan */
+    bottom: 90px; /* dinaikkan biar tidak tabrakan */
     left: 50%;
     transform: translateX(-50%);
     width: 70vw;
@@ -266,7 +266,7 @@
 
   /* Drop zone (tempat user meletakkan jawaban) */
   #dropZoneFloating {
-    bottom: 40px; /* lebih ke bawah */
+    bottom: 90px; /* lebih ke bawah */
     width: 45vw;  /* lebih kecil agar proporsional di landscape */
     height: 48px;
     font-size: 14px;
