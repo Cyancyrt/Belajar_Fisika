@@ -196,6 +196,7 @@
 
 
 <script src="https://cdn.jsdelivr.net/npm/matter-js@0.19.0/build/matter.min.js"></script>
+{{-- LOGIC Simulation --}}
 <script>
 const { Engine, Render, Runner, Bodies, Composite, Body, Events, Mouse, MouseConstraint } = Matter;
 
@@ -251,11 +252,11 @@ const REAL_G = 9.8;
 const FORCE_SCALE = 0.005;
 
  const defaults = {
-    m: parseFloat(@json($question->parameters['m'] ?? 5)),
-    mu_s: parseFloat(@json($question->parameters['mu_s'] ?? 0.6)),
-    mu_k: parseFloat(@json($question->parameters['mu_k'] ?? 0.4)),
-    appliedF: parseFloat(@json($question->parameters['appliedF'] ?? 20)),
-    slopeDeg: parseFloat(@json($question->parameters['slopeDeg'] ?? 0))
+    m: 5,
+    mu_s: 0.6,
+    mu_k: 0.4,
+    appliedF: 20,
+    slopeDeg: 0
   };
 let appliedF = 0; // gaya luar saat ini
 
@@ -274,17 +275,16 @@ function slopeEndpoints() {
 let slopeEndWall = null;
 
 function computeForces({ m=defaults.m, mu_s=defaults.mu_s, mu_k=defaults.mu_k, appliedF=defaults.appliedF, slopeDeg=defaults.slopeDeg } = {}) {
-  const theta = degToRad(slopeDeg);
-  const N = m * REAL_G * Math.cos(theta);
-  const gravityAlong = m * REAL_G * Math.sin(theta);
-  const netDriving = appliedF + gravityAlong;
-  const fs_max = mu_s * N;
-  const fk = mu_k * N;
-  const moves = Math.abs(netDriving) > fs_max;
-  const f = moves ? fk : Math.abs(netDriving);
+  const theta = degToRad(slopeDeg);                     // sudut bidang miring
+  const N = m * REAL_G * Math.cos(theta);               // gaya normal
+  const gravityAlong = m * REAL_G * Math.sin(theta);    // komponen gravitasi sejajar bidang
+  const netDriving = appliedF + gravityAlong;           // gaya pendorong (termasuk gravitasi sepanjang bidang)
+  const fs_max = mu_s * N;                              // gaya gesek statis maksimum
+  const fk = mu_k * N;                                  // gaya gesek kinetik
+  const moves = Math.abs(netDriving) > fs_max;          // benda bergerak ?
+  const f = moves ? fk : Math.abs(netDriving);          // gaya gesek aktual
   return { N, gravityAlong, netDriving, fs_max, fk, f, moves };
 }
-
 
 const answerZone = document.getElementById('answerZone');
 const dropZone = document.getElementById('dropZone');
@@ -632,6 +632,45 @@ document.addEventListener('dragstart', (e) => {
     };
   }
 })();
+</script>
+{{-- SUBMIT ANSWER --}}
+<script>
+// ambil CSRF token dulu
+await fetch('/sanctum/csrf-cookie', {
+  method: 'GET',
+  credentials: 'include' // penting, supaya cookie tersimpan
+});
+
+const response = await fetch(`/api/simulation/questions/${questionId}/submit`, {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  credentials: 'include', // cookie sanctum dikirim otomatis
+  body: JSON.stringify({
+    answer: "jawaban user"
+  }),
+});
+
+if (!response.ok) throw new Error("Error: " + response.status);
+const data = await response.json();
+console.log(data);
+</script>
+{{-- GET Question --}}
+<script>
+const token = "TOKEN_SANCTUM_KAMU";
+
+const response = await fetch(`/api/simulation/topics/${topicSlug}/question`, {
+  method: 'GET',
+  headers: {
+    'Authorization': `Bearer ${token}`,
+    'Accept': 'application/json',
+  }
+});
+
+if (!response.ok) throw new Error("Error: " + response.status);
+const data = await response.json();
+console.log(data);
 </script>
 </body>
 </html>

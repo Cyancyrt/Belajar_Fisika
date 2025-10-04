@@ -81,12 +81,12 @@ class SimulationQuestionSeeder extends Seeder
             ],
             [
                 'physics_topic_id' => $newton->id,
-                'question_text' => 'Sebuah mobil bermassa 1200 kg bergerak dari keadaan diam. Jika gaya dorong mesin adalah 3000 N dan gaya gesek 500 N, berapakah percepatan mobil?',
+                'question_text' => 'Sebuah mobil bermassa 1200 kg bergerak dari keadaan diam. Jika gaya dorong mesin adalah 30000 N dan gaya gesek 6000 N, berapakah percepatan mobil?',
                 'simulation_type' => 'newton_second_law',
-                'parameters' => [
+                'parameters' => [   
                     'mass' => 1200,
-                    'applied_force' => 3000,
-                    'friction_force' => 500
+                    'applied_force' => 30000,
+                    'friction_force' => 6000
                 ],
                 'evaluation_criteria' => [
                     'target_variable' => 'acceleration',

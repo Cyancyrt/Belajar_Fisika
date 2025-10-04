@@ -14,7 +14,7 @@ class SimulationController extends Controller
     public function index($questionId)
     {
         $question = SimulationQuestion::findOrFail($questionId);
-        return view('Dashboard.module.friction.friction_soal2', compact('question'));
+        return view('Dashboard.module.friction.friction_soal3', compact('question'));
     }
 
     /**
