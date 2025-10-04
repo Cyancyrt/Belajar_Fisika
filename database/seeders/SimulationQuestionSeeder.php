@@ -1,228 +1,244 @@
 <?php
+// filepath: database/seeders/SimulationQuestionSeeder.php
 
 namespace Database\Seeders;
 
 use App\Models\PhysicsTopic;
 use App\Models\SimulationQuestion;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
 class SimulationQuestionSeeder extends Seeder
 {
-    /**
-     * Run the database seeds.
-     */
-    public function run()
+    public function run(): void
     {
-        $this->seedNewtonQuestions();
-        $this->seedEnergyQuestions();
-        $this->seedMomentumQuestions();
+        $topics = PhysicsTopic::all();
+        
+        foreach ($topics as $topic) {
+            $questions = $this->getQuestionsForTopic($topic);
+            
+            foreach ($questions as $questionData) {
+                SimulationQuestion::create([
+                    'physics_topic_id' => $topic->id,
+                    'question_text' => $questionData['question_text'],
+                    'simulation_type' => $questionData['simulation_type'],
+                    'parameters' => $questionData['parameters'],
+                    'evaluation_criteria' => $questionData['evaluation_criteria'],
+                    'hints' => $questionData['hints'],
+                    'max_score' => 100,
+                    'difficulty' => $questionData['difficulty'],
+                    'is_active' => true,
+                ]);
+            }
+        }
 
-        $this->command->info('✅ Created simulation questions for all topics!');
+        $this->command->info('✅ Created simulation questions successfully!');
     }
 
-    private function seedNewtonQuestions()
+    private function getQuestionsForTopic($topic)
     {
-        $newton = PhysicsTopic::where('slug', 'newton_second_law')->first();
-        
-        $questions = [
-            [
-                'physics_topic_id' => $newton->id,
-                'question_text' => 'Sebuah balok bermassa 20 kg berada di atas lantai licin. Berapa besar gaya yang dibutuhkan untuk membuat balok tersebut bergerak dengan percepatan tepat 2.5 m/s²?',
-                'simulation_type' => 'newton_second_law',
+        switch ($topic->slug) {
+            case 'gaya-gesek':
+            return [
+                [
+                'question_text' => 'Kamu mencoba mendorong kotak di lantai, tapi kotaknya belum bergerak. Berapa besar gaya gesek yang menahannya?',
+                'simulation_type' => 'friction_static',
                 'parameters' => [
-                    'mass' => 20,
-                    'friction' => 0,
-                    'target_acceleration' => 2.5
+                    'mass' => ['min' => 1, 'max' => 10, 'default' => 5, 'unit' => 'kg'],
+                    'friction_coefficient' => ['min' => 0.1, 'max' => 0.8, 'default' => 0.3, 'unit' => ''],
+                    'applied_force' => ['min' => 1, 'max' => 25, 'default' => 10, 'unit' => 'N'],
                 ],
                 'evaluation_criteria' => [
-                    'target_variable' => 'force',
-                    'target_value' => 50, // F = m × a = 20 × 2.5
-                    'tolerance' => 2
+                    'target_value' => 10.0,
+                    'tolerance' => 2.0,
+                    'unit' => 'N',
+                    'calculation_type' => 'friction_force',
+                ],
+                'hints' => [
+                    'f_max = μ × N, di mana N = m × g',
+                    'Jika gaya dorong lebih kecil dari f_max, benda tidak bergerak.',
+                    'Semakin kasar permukaan, semakin besar gaya geseknya!',
+                ],
+                'difficulty' => 'beginner',
+                ],
+                [
+                'question_text' => 'Sebuah benda meluncur di bidang miring. Dengan mengetahui sudut dan gaya geseknya, bisakah kamu mencari percepatan benda tersebut?',
+                'simulation_type' => 'inclined_plane',
+                'parameters' => [
+                    'mass' => ['min' => 2, 'max' => 8, 'default' => 5, 'unit' => 'kg'],
+                    'angle' => ['min' => 15, 'max' => 45, 'default' => 30, 'unit' => 'degrees'],
+                    'friction_coefficient' => ['min' => 0.1, 'max' => 0.5, 'default' => 0.2, 'unit' => ''],
+                ],
+                'evaluation_criteria' => [
+                    'target_value' => 3.2,
+                    'tolerance' => 0.5,
+                    'unit' => 'm/s²',
+                    'calculation_type' => 'acceleration',
+                ],
+                'hints' => [
+                    'Gunakan rumus: a = g(sin θ - μ cos θ)',
+                    'Ingat, gaya gesek menghambat gerakan.',
+                    'θ = sudut bidang miring terhadap tanah.',
+                ],
+                'difficulty' => 'intermediate',
+                ],
+            ];
+
+            case 'momentum':
+            return [
+                [
+                'question_text' => 'Sebuah bola sedang bergerak. Dengan mengetahui massanya dan kecepatannya, bisakah kamu menghitung momentum bola tersebut?',
+                'simulation_type' => 'momentum_linear',
+                'parameters' => [
+                    'mass' => ['min' => 1, 'max' => 10, 'default' => 5, 'unit' => 'kg'],
+                    'velocity' => ['min' => 1, 'max' => 20, 'default' => 6, 'unit' => 'm/s'],
+                ],
+                'evaluation_criteria' => [
+                    'target_value' => 30.0,
+                    'tolerance' => 5.0,
+                    'unit' => 'kg⋅m/s',
+                    'calculation_type' => 'momentum',
+                ],
+                'hints' => [
+                    'Gunakan rumus p = m × v',
+                    'Momentum menunjukkan "dorongan" benda yang bergerak.',
+                    'Satuan momentum adalah kg⋅m/s',
+                ],
+                'difficulty' => 'beginner',
+                ],
+                [
+                'question_text' => 'Dua bola bertumbukan di lintasan. Dengan mengetahui massa dan kecepatan keduanya, bisakah kamu menghitung apakah momentum totalnya tetap sama?',
+                'simulation_type' => 'collision',
+                'parameters' => [
+                    'mass1' => ['min' => 2, 'max' => 8, 'default' => 4, 'unit' => 'kg'],
+                    'mass2' => ['min' => 2, 'max' => 8, 'default' => 6, 'unit' => 'kg'],
+                    'velocity1' => ['min' => 5, 'max' => 15, 'default' => 10, 'unit' => 'm/s'],
+                    'velocity2' => ['min' => 0, 'max' => 10, 'default' => 0, 'unit' => 'm/s'],
+                ],
+                'evaluation_criteria' => [
+                    'target_value' => 40.0,
+                    'tolerance' => 8.0,
+                    'unit' => 'kg⋅m/s',
+                    'calculation_type' => 'total_momentum',
+                ],
+                'hints' => [
+                    'Gunakan hukum kekekalan momentum: p_sebelum = p_sesudah',
+                    'Momentum tiap benda: p = m × v',
+                    'Jumlahkan semua momentum untuk mendapat totalnya.',
+                ],
+                'difficulty' => 'advanced',
+                ],
+            ];
+
+            case 'energi-kinetik':
+            return [
+                [
+                'question_text' => 'Sebuah bola sedang bergulir di tanah. Jika kamu tahu berat bola dan kecepatannya, bisakah kamu menghitung energi geraknya (energi kinetik)?',
+                'simulation_type' => 'kinetic_basic',
+                'parameters' => [
+                    'mass' => ['min' => 1, 'max' => 10, 'default' => 5, 'unit' => 'kg'],
+                    'velocity' => ['min' => 1, 'max' => 20, 'default' => 10, 'unit' => 'm/s'],
+                ],
+                'evaluation_criteria' => [
+                    'target_value' => 250.0,
+                    'tolerance' => 50.0,
+                    'unit' => 'J',
+                    'calculation_type' => 'kinetic_energy',
+                ],
+                'hints' => [
+                    'Gunakan rumus Ek = ½ × m × v²',
+                    'Semakin cepat benda bergerak, makin besar energi kinetiknya!',
+                    'Energi diukur dalam Joule (J)',
+                ],
+                'difficulty' => 'beginner',
+                ],
+                [
+                'question_text' => 'Sebuah bola dijatuhkan dari ketinggian tertentu. Saat jatuh, energi potensialnya berubah menjadi energi kinetik. Bisakah kamu menghitung total energinya?',
+                'simulation_type' => 'energy_transformation',
+                'parameters' => [
+                    'mass' => ['min' => 2, 'max' => 8, 'default' => 5, 'unit' => 'kg'],
+                    'height' => ['min' => 1, 'max' => 10, 'default' => 5, 'unit' => 'm'],
+                    'velocity_initial' => ['min' => 0, 'max' => 15, 'default' => 0, 'unit' => 'm/s'],
+                ],
+                'evaluation_criteria' => [
+                    'target_value' => 245.0,
+                    'tolerance' => 25.0,
+                    'unit' => 'J',
+                    'calculation_type' => 'total_energy',
+                ],
+                'hints' => [
+                    'Gunakan konsep: Energi total = Energi kinetik + Energi potensial',
+                    'Ep = m × g × h',
+                    'Ingat hukum kekekalan energi!',
+                ],
+                'difficulty' => 'intermediate',
+                ],
+            ];
+
+            case 'hukum-newton':
+            return [
+                [
+                'question_text' => 'Kamu sedang mendorong sebuah kotak di lantai. Jika kamu tahu gaya dorong dan massanya, bisakah kamu menghitung seberapa cepat kotak itu bertambah cepat (percepatannya)?',
+                'simulation_type' => 'newton_basic',
+                'parameters' => [
+                    'mass' => ['min' => 1, 'max' => 10, 'default' => 5, 'unit' => 'kg'],
+                    'force' => ['min' => 5, 'max' => 50, 'default' => 20, 'unit' => 'N'],
+                ],
+                'evaluation_criteria' => [
+                    'target_value' => 4.0,
+                    'tolerance' => 0.5,
+                    'unit' => 'm/s²',
+                    'calculation_type' => 'acceleration',
                 ],
                 'hints' => [
                     'Gunakan rumus F = m × a',
-                    'Massa balok = 20 kg',
-                    'Percepatan target = 2.5 m/s²',
-                    'Lantai licin berarti tidak ada gaya gesek'
+                    'Untuk mencari a, ubah jadi a = F / m',
+                    'Semakin besar gaya, semakin besar percepatan!',
                 ],
-                'max_score' => 100,
-                'difficulty' => 'Mudah'
-            ],
-            [
-                'physics_topic_id' => $newton->id,
-                'question_text' => 'Sebuah balok bermassa 5 kg berada di atas lantai datar dengan koefisien gesek statis μs = 0.6 dan gesek kinetis μk = 0.4. Jika balok didorong dengan gaya 20 N, tentukan gaya gesek f yang bekerja pada balok!',
-                'simulation_type' => 'friction_flat',
+                'difficulty' => 'beginner',
+                ],
+                [
+                'question_text' => 'Dua orang mendorong kotak dari arah yang berbeda. Dengan mengetahui besar gaya dan sudut antar gaya, bisakah kamu mencari percepatan kotak tersebut?',
+                'simulation_type' => 'newton_resultant',
                 'parameters' => [
-                    'mass' => 5,
-                    'mu_s' => 0.6,
-                    'mu_k' => 0.4,
-                    'appliedF' => 20,
-                    'slopeDeg' => 0
+                    'mass' => ['min' => 2, 'max' => 8, 'default' => 4, 'unit' => 'kg'],
+                    'force1' => ['min' => 10, 'max' => 30, 'default' => 20, 'unit' => 'N'],
+                    'force2' => ['min' => 5, 'max' => 15, 'default' => 8, 'unit' => 'N'],
+                    'angle' => ['min' => 0, 'max' => 180, 'default' => 90, 'unit' => 'degrees'],
                 ],
                 'evaluation_criteria' => [
-                    'target_variable' => 'friction',
-                    // hitung manual:
-                    // N = m*g = 5*9.8 = 49 N
-                    // fs_max = μs*N = 0.6*49 = 29.4 N
-                    // F = 20 N < fs_max → balok tidak bergerak
-                    // f = 20 N
-                    'target_value' => 20,
-                    'tolerance' => 1
+                    'target_value' => 3.0,
+                    'tolerance' => 0.8,
+                    'unit' => 'm/s²',
+                    'calculation_type' => 'resultant_acceleration',
                 ],
                 'hints' => [
-                    'Hitung gaya normal: N = m × g',
-                    'Hitung gaya gesek maksimum: fs_max = μs × N',
-                    'Bandingkan gaya dorong dengan fs_max',
-                    'Jika F < fs_max maka f = F, jika F > fs_max maka f = fk'
+                    'Hitung dulu gaya total (resultan) dari dua gaya yang berbeda arah.',
+                    'Gunakan rumus: F_resultan = √(F1² + F2² + 2 × F1 × F2 × cos(θ))',
+                    'Lalu cari percepatan: a = F_resultan / m',
                 ],
-                'max_score' => 100,
-                'difficulty' => 'Sedang'
-            ],
-            [
-                'physics_topic_id' => $newton->id,
-                'question_text' => 'Sebuah mobil bermassa 1200 kg bergerak dari keadaan diam. Jika gaya dorong mesin adalah 30000 N dan gaya gesek 6000 N, berapakah percepatan mobil?',
-                'simulation_type' => 'newton_second_law',
-                'parameters' => [   
-                    'mass' => 1200,
-                    'applied_force' => 30000,
-                    'friction_force' => 6000
+                'difficulty' => 'intermediate',
                 ],
-                'evaluation_criteria' => [
-                    'target_variable' => 'acceleration',
-                    'target_value' => 2.08, // a = (F_net)/m = (3000-500)/1200
-                    'tolerance' => 0.1
-                ],
-                'hints' => [
-                    'Hitung gaya netto terlebih dahulu',
-                    'F_netto = F_dorong - F_gesek',
-                    'Kemudian gunakan rumus a = F_netto / m'
-                ],
-                'max_score' => 120,
-                'difficulty' => 'Sedang'
-            ]
-        ];
+            ];
 
-        foreach ($questions as $question) {
-            SimulationQuestion::updateOrCreate($question);
-        }
-    }
-
-    private function seedEnergyQuestions()
-    {
-        $energy = PhysicsTopic::where('slug', 'kinetic_energy')->first();
-        
-        $questions = [
-            [
-                'physics_topic_id' => $energy->id,
-                'question_text' => 'Sebuah bola bermassa 5 kg bergerak dengan kecepatan 10 m/s. Hitunglah energi kinetik bola tersebut!',
-                'simulation_type' => 'kinetic_energy',
-                'parameters' => [
-                    'mass' => 5,
-                    'velocity' => 10
-                ],
+            default:
+            return [
+                [
+                'question_text' => "Eksperimen {$topic->name} - Gunakan parameter yang tersedia untuk memahami konsep fisikanya!",
+                'simulation_type' => str_replace('-', '_', $topic->slug),
+                'parameters' => [],
                 'evaluation_criteria' => [
-                    'target_variable' => 'kinetic_energy',
-                    'target_value' => 250, // Ek = ½mv² = ½ × 5 × 10²
-                    'tolerance' => 5
+                    'target_value' => 100,
+                    'tolerance' => 10,
+                    'unit' => 'points',
+                    'calculation_type' => 'completion',
                 ],
                 'hints' => [
-                    'Gunakan rumus Ek = ½mv²',
-                    'Massa bola = 5 kg',
-                    'Kecepatan = 10 m/s',
-                    'Jangan lupa ½ di depan rumus!'
+                    'Ikuti petunjuk simulasi dengan seksama.',
+                    'Amati bagaimana perubahan parameter memengaruhi hasil.',
                 ],
-                'max_score' => 150,
-                'difficulty' => 'Mudah'
-            ],
-            [
-                'physics_topic_id' => $energy->id,
-                'question_text' => 'Dua buah benda memiliki massa yang sama yaitu 8 kg. Benda A bergerak dengan kecepatan 6 m/s dan benda B bergerak dengan kecepatan 12 m/s. Berapa perbandingan energi kinetik benda A dan B?',
-                'simulation_type' => 'kinetic_energy_comparison',
-                'parameters' => [
-                    'mass_a' => 8,
-                    'mass_b' => 8,
-                    'velocity_a' => 6,
-                    'velocity_b' => 12
+                'difficulty' => 'beginner',
                 ],
-                'evaluation_criteria' => [
-                    'target_variable' => 'energy_ratio',
-                    'target_value' => 0.25, // Ek_A : Ek_B = (½×8×6²) : (½×8×12²) = 144:576 = 1:4
-                    'tolerance' => 0.05
-                ],
-                'hints' => [
-                    'Hitung energi kinetik masing-masing benda',
-                    'Ek = ½mv²',
-                    'Bandingkan Ek_A dengan Ek_B',
-                    'Perhatikan bahwa energi kinetik berbanding lurus dengan kuadrat kecepatan'
-                ],
-                'max_score' => 180,
-                'difficulty' => 'Sulit'
-            ]
-        ];
-
-        foreach ($questions as $question) {
-            SimulationQuestion::updateOrCreate($question);
-        }
-    }
-
-    private function seedMomentumQuestions()
-    {
-        $momentum = PhysicsTopic::where('slug', 'momentum')->first();
-        
-        $questions = [
-            [
-                'physics_topic_id' => $momentum->id,
-                'question_text' => 'Dua bola akan bertumbukan elastis. Bola A bermassa 3 kg bergerak ke kanan dengan kecepatan 5 m/s, bola B bermassa 2 kg bergerak ke kiri dengan kecepatan 3 m/s. Hitunglah momentum total sistem sebelum tumbukan!',
-                'simulation_type' => 'momentum_collision',
-                'parameters' => [
-                    'mass_a' => 3,
-                    'velocity_a' => 5,
-                    'mass_b' => 2,
-                    'velocity_b' => -3 // negatif karena berlawanan arah
-                ],
-                'evaluation_criteria' => [
-                    'target_variable' => 'total_momentum',
-                    'target_value' => 9, // p = m1×v1 + m2×v2 = 3×5 + 2×(-3) = 15-6 = 9
-                    'tolerance' => 1
-                ],
-                'hints' => [
-                    'Momentum = massa × kecepatan',
-                    'Perhatikan arah gerak (+ dan -)',
-                    'Momentum total = p₁ + p₂',
-                    'Kecepatan ke kanan (+), ke kiri (-)'
-                ],
-                'max_score' => 200,
-                'difficulty' => 'Sedang'
-            ],
-            [
-                'physics_topic_id' => $momentum->id,
-                'question_text' => 'Sebuah peluru bermassa 0.02 kg ditembakkan dari senapan bermassa 4 kg. Jika kecepatan peluru 400 m/s, berapakah kecepatan mundur senapan?',
-                'simulation_type' => 'momentum_conservation',
-                'parameters' => [
-                    'bullet_mass' => 0.02,
-                    'gun_mass' => 4,
-                    'bullet_velocity' => 400,
-                    'initial_momentum' => 0
-                ],
-                'evaluation_criteria' => [
-                    'target_variable' => 'recoil_velocity',
-                    'target_value' => -2, // v_gun = -(m_bullet × v_bullet) / m_gun = -(0.02×400)/4
-                    'tolerance' => 0.1
-                ],
-                'hints' => [
-                    'Gunakan hukum kekekalan momentum',
-                    'Momentum awal = momentum akhir',
-                    'Momentum awal = 0 (sistem diam)',
-                    'p_peluru + p_senapan = 0'
-                ],
-                'max_score' => 250,
-                'difficulty' => 'Sulit'
-            ]
-        ];
-
-        foreach ($questions as $question) {
-            SimulationQuestion::updateOrCreate($question);
+            ];
         }
     }
 }

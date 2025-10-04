@@ -17,7 +17,7 @@ return new class extends Migration
             $table->string('slug')->unique(); // newton_second_law, kinetic_energy, momentum
             $table->string('subtitle'); // F = m × a, Ek = ½mv², p = m × v
             $table->text('description');
-            $table->enum('difficulty', ['Mudah', 'Sedang', 'Sulit']);
+            $table->enum('difficulty', ['Beginner', 'Intermediate', 'Advanced']);
             $table->integer('estimated_duration'); // dalam menit
             $table->string('icon')->nullable();
             $table->boolean('is_active')->default(true);

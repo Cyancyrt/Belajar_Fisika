@@ -20,11 +20,11 @@ return new class extends Migration
             $table->json('evaluation_criteria'); // target_variable, target_value, tolerance
             $table->json('hints')->nullable(); // Array of hints
             $table->integer('max_score')->default(100);
-            $table->enum('difficulty', ['Mudah', 'Sedang', 'Sulit']);
+            $table->enum('difficulty', ['Beginner', 'Intermediate', 'Advanced']);
             $table->boolean('is_active')->default(true);
             $table->timestamps();
         });
-    }
+    }       
 
     /**
      * Reverse the migrations.
