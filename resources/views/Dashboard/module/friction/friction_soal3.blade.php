@@ -40,6 +40,8 @@
   }
   #feedback.ok { background:#dcfce7; color:#166534; border:1px solid #bbf7d0; display:block; }
   #feedback.bad { background:#fee2e2; color:#991b1b; border:1px solid #fecaca; display:block; }
+  #feedback .close-btn { position:absolute; top:5px; right:10px; background:none; border:none; color:#666; font-size:18px; cursor:pointer; }
+  #feedback .close-btn:hover { color: #000; }
 
   #questionBtn { position: fixed; top: 16px; right: 18px; z-index: 85;
     width: 48px; height: 48px; border-radius: 50%; border:none;
@@ -50,8 +52,54 @@
 
   #questionModal { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.45); z-index:95; align-items:center; justify-content:center; }
   #questionModal .card { width:420px; background:#fff; padding:18px; border-radius:10px; }
+
+  @media (max-width: 768px) {
+  #controls {
+    width: 90%;
+    left: 50%;
+    transform: translateX(-50%);
+    top: 10px;
+    font-size: 14px;
+  }
+
+  #inputSection {
+    flex-direction: column;
+    width: 90%;
+    bottom: 10px;
+    padding: 12px;
+  }
+
+  #answerInput {
+    width: 100%;
+    font-size: 14px;
+  }
+
+  #checkAnswerBtn {
+    width: 100%;
+  }
+
+  #readouts {
+    position: fixed;
+    right: 10px;
+    bottom: 100px; /* biar tidak ketutup inputSection */
+    font-size: 12px;
+    min-width: auto;
+  }
+
+  #questionBtn {
+    width: 40px;
+    height: 40px;
+    font-size: 18px;
+  }
+
+  #questionModal .card {
+    width: 90%;
+  }
+}
+
 </style>
 </head>
+
 <body>
   <div id="simContainer">
     <canvas id="simCanvas"></canvas>
@@ -64,7 +112,10 @@
       </div>
     </div>
 
-    <div id="feedback"></div>
+  <div id="feedback" class="feedback">
+    <span id="feedbackMsg"></span>
+    <button id="closeFeedback" class="close-btn">&times;</button>
+  </div>
 
     <div id="readouts">
       <div>Percepatan: <span id="roAcceleration">0</span> m/s²</div>
@@ -80,7 +131,7 @@
           <button id="closeQuestion" style="border:none;background:none;font-size:20px;cursor:pointer">&times;</button>
         </div>
         <p id="questionText" style="margin-top:12px;">
-          Sebuah mobil bermassa 5 kg diberi gaya dorong 10 N pada permukaan datar dengan koefisien gesekan kinetik 0.2. Berapakah percepatan mobil tersebut?
+          {{ $question->question_text }}
         </p>
         <div style="margin-top:10px; display:flex; gap:8px; justify-content:flex-end;">
           <button id="closeQuestion2" class="btn ghost">Tutup</button>
@@ -96,6 +147,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/matter-js@0.19.0/build/matter.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+{{-- LOGIC Simulation --}}
 <script>
 const { Engine, Render, Runner, Bodies, Body, Composite, Events } = Matter;
 
@@ -107,6 +159,7 @@ world.gravity.y = 1;
 // Canvas size
 let W = window.innerWidth, H = window.innerHeight;
 
+// Renderer
 const render = Render.create({
     element: document.body,
     engine: engine,
@@ -114,7 +167,7 @@ const render = Render.create({
         width: W,
         height: H,
         wireframes: false,
-        background: '#87CEEB'
+        background: 'transparent' // langit biru muda
     }
 });
 Render.run(render);
@@ -125,12 +178,124 @@ render.canvas.style.zIndex = '10';
 // Ground
 const groundHeight = 150;
 const groundY = H - groundHeight/2;
-const ground = Bodies.rectangle(W/2, groundY, W*2, groundHeight, {
+const ground = Bodies.rectangle(W/2, groundY, W * 10, groundHeight, {
     isStatic: true,
-    render: { fillStyle: '#808080' },
-    friction : 0
+    render: { fillStyle: '#7c5e10' },
+    friction: 0
 });
 Composite.add(world, ground);
+
+// 🎨 Tambahkan latar belakang statis (gunung dan pohon)
+const bgCanvas = document.createElement('canvas');
+bgCanvas.width = W;
+bgCanvas.height = H;
+bgCanvas.style.position = 'absolute';
+bgCanvas.style.top = '0';
+bgCanvas.style.left = '0';
+bgCanvas.style.zIndex = '5'; // di belakang canvas utama
+document.body.appendChild(bgCanvas);
+
+const bgCtx = bgCanvas.getContext('2d');
+
+function drawBackground(cameraX = 0) {
+    // Opsional: Uncomment untuk debug (tapi jangan biarkan aktif, karena akan spam console)
+    // console.log('drawBackground dipanggil dengan cameraX:', cameraX);
+
+    bgCtx.clearRect(0, 0, W, H);
+
+    // 🌤 Langit (gradient biru muda) - Ini statis, tidak perlu conditional
+    const gradient = bgCtx.createLinearGradient(0, 0, 0, H);
+    gradient.addColorStop(0, "#b3e5fc");  // Atas: biru terang
+    gradient.addColorStop(1, "#e1f5fe"); // Bawah: biru muda
+    bgCtx.fillStyle = gradient;
+    bgCtx.fillRect(0, 0, W, H);
+
+    // 🏔 Gunung (parallax lambat, hijau) - Tanpa outline debug
+    bgCtx.fillStyle = "#7ba176";
+    const mountainSpacing = 400;
+    const mountainOffset = (cameraX * 0.3) % mountainSpacing;  // Parallax: gerak lambat
+
+    for (let i = -1; i < (W / mountainSpacing) + 2; i++) {
+        const baseX = (i * mountainSpacing) - mountainOffset;
+        
+        // Pastikan gunung terlihat di layar (clip jika perlu)
+        if (baseX > -400 && baseX < W + 400) {  // Hanya gambar yang dekat layar
+            bgCtx.beginPath();
+            bgCtx.moveTo(baseX, H - 100);      // Base lebih tinggi agar terlihat di atas ground
+            bgCtx.lineTo(baseX + 200, H - 350); // Puncak
+            bgCtx.lineTo(baseX + 400, H - 100); // Base kanan
+            bgCtx.closePath();
+            bgCtx.fill();
+            // HAPUS: Outline merah debug (sudah tidak ada di sini)
+        }
+    }
+
+    // 🌲 Pohon (parallax lebih cepat, hijau tua) - Tanpa outline debug
+    const treeSpacing = 180;
+    const treeOffset = (cameraX * 0.6) % treeSpacing;  // Parallax: gerak lebih cepat
+
+    for (let i = -1; i < (W / treeSpacing) + 3; i++) {
+        const x = (i * treeSpacing) - treeOffset;
+        const y = H - 120;  // Sedikit lebih tinggi agar tidak overlap ground
+
+        if (x > -200 && x < W + 200) {  // Hanya gambar pohon dekat layar
+            // Batang (coklat)
+            bgCtx.fillStyle = "#5b3714";
+            bgCtx.fillRect(x + 10, y - 50, 12, 50);
+
+            // Daun utama (hijau)
+            bgCtx.beginPath();
+            bgCtx.fillStyle = "#2e7d32";
+            bgCtx.arc(x + 16, y - 60, 25, 0, Math.PI * 2);
+            bgCtx.fill();
+
+            // Lapisan daun tambahan (lebih besar untuk efek 3D)
+            bgCtx.beginPath();
+            bgCtx.arc(x + 5, y - 65, 20, 0, Math.PI * 2);
+            bgCtx.fill();
+
+            // HAPUS: Outline biru debug (sudah tidak ada di sini)
+        }
+    }
+
+    // HAPUS: Semua debug rect merah dan teks (sudah tidak ada di sini)
+}
+
+// Panggil awal untuk render statis (hanya sekali)
+drawBackground(0);
+
+// Kamera mengikuti mobil (event listener tetap sama, tidak berubah)
+let lastCameraX = 0;
+const UPDATE_THRESHOLD = 5;  // Hanya update jika cameraX berubah > 5px (sesuaikan jika perlu)
+
+Events.on(render, 'afterRender', function() {
+    if (!car) {
+        // Jika car belum ada, render statis (tidak perlu update terus)
+        if (Math.abs(0 - lastCameraX) > UPDATE_THRESHOLD) {
+            drawBackground(0);
+            lastCameraX = 0;
+        }
+        return;
+    }
+    
+    const cameraX = car.position.x - W / 2;
+    
+    // Batasan: Hanya update jika cameraX berubah signifikan (untuk optimasi parallax)
+    if (Math.abs(cameraX - lastCameraX) > UPDATE_THRESHOLD) {
+        drawBackground(cameraX);
+        lastCameraX = cameraX;
+        
+        // Opsional: Log hanya saat update (tidak spam)
+        // console.log('Background updated! Camera X:', cameraX);
+    }
+    
+    // Pindahkan viewport kamera mengikuti posisi mobil (ini tetap setiap frame, karena Matter.js butuh)
+    Render.lookAt(render, {
+        min: { x: cameraX, y: 0 },
+        max: { x: cameraX + W, y: H }
+    });
+});
+
 
 // Physics parameters (sesuai parameter)
 const MASS = 1200;        // kg
@@ -183,16 +348,28 @@ function breakCar(){
 createCar();
 
 // Feedback
-function showFeedback(msg, success){
+function showFeedback(msg, success) {
   const fb = document.getElementById('feedback');
-  fb.textContent = msg;
-  fb.className = ''; // reset class dulu
-  if(success){
-    fb.classList.add('ok');
-  } else {
-    fb.classList.add('bad');
-  }
+  const fbMsg = document.getElementById('feedbackMsg');
+  fbMsg.textContent = msg;
+  fb.className = '';            // reset class
+  fb.style.display = 'block';   // tampilkan
+  fb.style.opacity = '1';
+  fb.classList.add(success ? 'ok' : 'bad');
+
+  // hilang otomatis
+  setTimeout(() => {
+    fb.style.opacity = '0';
+    setTimeout(() => fb.style.display = 'none', 400);
+  }, success ? 3000 : 5000);
 }
+
+// tombol close
+document.getElementById('closeFeedback').addEventListener('click', () => {
+  const fb = document.getElementById('feedback');
+  fb.style.opacity = '0';
+  setTimeout(() => fb.style.display = 'none', 400);
+});
 
 // Check Answer
     document.getElementById('checkAnswerBtn').addEventListener('click', () => {
@@ -301,6 +478,7 @@ Events.on(engine, 'beforeUpdate', () => {
   }
     updateReadouts();
 });
+
 
 // Modal controls (opsional)
 document.getElementById('questionBtn').addEventListener('click',()=>document.getElementById('questionModal').style.display='flex');

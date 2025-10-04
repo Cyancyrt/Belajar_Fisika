@@ -14,7 +14,14 @@ class SimulationController extends Controller
     public function index($questionId)
     {
         $question = SimulationQuestion::findOrFail($questionId);
-        return view('Dashboard.module.friction.friction_soal3', compact('question'));
+        $viewName = 'Dashboard.module.friction.friction_soal' . $questionId;
+
+        // Pastikan file view tersebut ada
+        if (!view()->exists($viewName)) {
+            abort(404, 'Halaman simulasi tidak ditemukan.');
+        }
+
+        return view($viewName, compact('question'));
     }
 
     /**

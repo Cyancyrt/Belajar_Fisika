@@ -26,6 +26,12 @@
     z-index: 80;
   }
   #controls .title { font-weight:700; margin-bottom:8px; }
+  @media (min-width: 750px) and (orientation: landscape) {
+    #controls {
+      width: 280px !important ; /* sebelumnya 220px, jadi lebih panjang */
+      padding: 14px; /* opsional, biar isi nggak terlalu sempit */
+    }
+  }
   button, .btn {
     display:inline-block; border: none; cursor:pointer; border-radius:8px; padding:8px 10px;
     background:#4a4e69; color:#fff; font-size:13px;
@@ -41,8 +47,15 @@
   gap: 12px;
   align-items: center;
 }
+  #answerActions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-left: 8px;
+  }
   #answerZone {
-    width: 420px; min-height:72px; background: rgba(255,255,255,0.95);
+    width: auto;
+    max-width: 420px; min-height:72px; background: rgba(255,255,255,0.95);
     padding:10px; border-radius:10px; box-shadow:0 6px 18px rgba(0,0,0,0.08);
     display:flex; gap:10px; align-items:center; justify-content:flex-start;
     flex-wrap:wrap;
@@ -124,25 +137,178 @@
     opacity: 1;
   }
   #questionModal { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.45); z-index:95; align-items:center; justify-content:center;transition: transform 0.3s ease, opacity 0.3s ease; }
-  #questionModal .card { width:420px; background:#fff; padding:18px; border-radius:10px; }
+  #questionModal .card { width: 90vw;
+  max-width: 420px; background:#fff; padding:18px; border-radius:10px; }
   #questionModal.show{
     animation: fadeInScale 0.4s ease forwards;
   }
   /* Animasi tambahan untuk entrance yang lebih smooth */
-      @keyframes fadeInScale {
-          from {
-              opacity: 0;
-              transform: scale(0.8) translateY(-20px);
-          }
-          to {
-              opacity: 1;
-              transform: scale(1) translateY(0);
-          }
+  @keyframes fadeInScale {
+      from {
+          opacity: 0;
+          transform: scale(0.8) translateY(-20px);
       }
-  @media (max-width:860px){
-    #controls { width: 200px; }
-    #answerZone { width: 92vw; }
+      to {
+          opacity: 1;
+          transform: scale(1) translateY(0);
+      }
   }
+@media (max-width: 860px) {
+  /* Bungkus zone jawaban */
+  #answerZoneWrap {
+    position: fixed;
+    bottom: 8px;
+    left: 0;
+    transform: none;
+    flex-direction: row;
+    align-items: flex-end;
+    justify-content: space-between;
+    width: 100%;
+    padding: 0 10px;
+  }
+
+  /* Zona spawn jawaban pindah ke kiri, vertikal */
+  #answerZone {
+    position: fixed;
+    left: 10px;
+    bottom: 300px;
+    width: 120px;
+    background: rgba(255,255,255,0.95);
+    padding: 10px;
+    border-radius: 10px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  /* Zona drop tetap di tengah */
+  #dropZoneFloating {
+    bottom: 160px; /* dinaikkan biar tidak tabrakan */
+    left: 50%;
+    transform: translateX(-50%);
+    width: 70vw;
+  }
+
+  /* Tombol Submit & Clear tetap di bawah tengah */
+  #answerActions {
+    position: fixed;
+    bottom: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 10px;
+    width: 80vw;
+    justify-content: center;
+  }
+
+  #answerActions button {
+    flex: 1;
+  }
+}
+
+  @media (hover: none) {
+    #questionBtn:hover {
+      width: 48px;
+      border-radius: 50%;
+      font-size: 22px;
+    }
+  }
+  @media (max-width:600px) {
+    #controls {
+      width: 90vw;
+      left: 50%;
+      transform: translateX(-50%);
+    }
+    #readouts {
+      right: 50%;
+      transform: translateX(50%);
+      bottom: 8px;
+      min-width: unset;
+      width: 90vw;
+      font-size: 12px;
+    }
+    #dropZoneFloating {
+      bottom: 120px; /* agak lebih tinggi */
+      width: 70vw;
+      font-size: 13px;
+    }
+    #readouts {
+      display: none !important;
+    }
+  }
+  /* Penyesuaian khusus untuk mobile landscape */
+@media (max-width: 950px) and (orientation: landscape) {
+  /* Spawn zone (tempat tile muncul) */
+   #answerZoneWrap {
+    width: 60vw; /* batasi lebar jadi 60% layar */
+    max-width: 600px; /* maksimal tetap 600px */
+    right: auto;
+    left: 16px; /* misalnya kamu mau tetap di sisi kiri */
+  }
+
+  #answerZone {
+    position: fixed;
+    left: 10px;
+    bottom: 80px; /* lebih rendah dari sebelumnya */
+    width: 150px;
+    min-height: auto;
+    padding: 8px;
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 10px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+   
+
+
+  /* Drop zone (tempat user meletakkan jawaban) */
+  #dropZoneFloating {
+    bottom: 40px; /* lebih ke bawah */
+    width: 45vw;  /* lebih kecil agar proporsional di landscape */
+    height: 48px;
+    font-size: 14px;
+    background: rgba(255,255,255,0.85);
+  }
+
+  /* Tombol submit & clear */
+  #answerActions {
+    position: fixed;
+    bottom: 20px;
+    left: 16px;
+    transform: none;
+    flex-direction: row;
+    width: auto;
+    gap: 8px;
+    z-index: 10; 
+  }
+
+  /* Controls diperkecil sedikit agar tidak menutupi area tengah */
+  #controls {
+    top: 8px;
+    left: 8px;
+    width: 180px;
+    padding: 8px;
+  }
+
+  /* Readouts lebih kecil dan dirapatkan */
+  #readouts {
+    bottom: 8px;
+    right: 8px;
+    font-size: 12px;
+    min-width: 160px;
+  }
+
+  /* Tombol soal pindah ke bawah kanan biar tidak bentrok */
+  #questionBtn {
+    top: auto;
+    bottom: 90px;
+    right: 12px;
+  }
+}
+
 </style>
 </head>
 <body>
@@ -162,7 +328,8 @@
   <div id="answerZoneWrap">
     <div id="answerZone"></div>
     <div id="dropZone"></div>
-    <div style="display:flex;flex-direction:column;gap:8px;margin-left:8px">
+    
+    <div id="answerActions">
       <button id="submitAnswer" class="btn">Submit</button>
       <button id="clearDrop" class="btn ghost">Clear</button>
     </div>
@@ -591,15 +758,27 @@ document.getElementById('resetBtn').addEventListener('click', () => {
 
 
 spawnAnswerOptions();
+window.addEventListener('resize', () => {
+  W = window.innerWidth;
+  H = window.innerHeight;
 
-window.addEventListener('resize', ()=> {
-  W = window.innerWidth; H = window.innerHeight;
-  render.canvas.width = W; render.canvas.height = H;
-  Body.setPosition(ground, { x: W/2, y: H-40 });
-  Body.setPosition(slope, { x: W/2 + 150, y: H - 180 });
-  Body.setPosition(rightWall, { x: W + wallThickness/2, y: H/2 });
-  Body.setPosition(leftWall, { x: -wallThickness/2, y: H/2 });
+  // Update ukuran canvas
+  render.canvas.width = W;
+  render.canvas.height = H;
+
+  // Update viewport render agar sesuai ukuran baru
+  render.options.width = W;
+  render.options.height = H;
+  render.bounds.max.x = W;
+  render.bounds.max.y = H;
+
+  // Reposisi ground dan dinding agar sesuai proporsi layar baru
+  Body.setPosition(ground, { x: W / 2, y: H - 40 });
+  Body.setPosition(slope, { x: W / 2 + 150, y: H - 180 });
+  Body.setPosition(rightWall, { x: W + wallThickness / 2, y: H / 2 });
+  Body.setPosition(leftWall, { x: -wallThickness / 2, y: H / 2 });
 });
+
 
 const questionBtn = document.getElementById('questionBtn');
 const questionModal = document.getElementById('questionModal');
